@@ -1,12 +1,12 @@
-// src/app/page.tsx
+
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import html2canvas from "html2canvas"; // 1. Import html2canvas
 import VideoBackground from "../components/ui/VideoBackground";
 import QuestionOverlay from "../components/ui/QuestionOverlay";
 import HomePage from "../components/ui/Homepage";
 import { questions, careerDescriptions } from "../data/questionsData";
-
 
 const ShareIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -23,8 +23,10 @@ export default function JourneyPage() {
     devops: 0, cybersecurity: 0, productManager: 0,
   });
   const [recommendedCareer, setRecommendedCareer] = useState<{ name: string; description: string } | null>(null);
-  // --- State สำหรับจัดการสถานะการคัดลอก ---
-  const [isCopied, setIsCopied] = useState(false);
+  const [isProcessingShare, setIsProcessingShare] = useState(false); // สถานะขณะกำลังสร้างภาพ
+
+  // 2. สร้าง Ref สำหรับ Element ที่จะจับภาพ
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const calculateResult = useCallback(() => {
     let maxScore = -1;
@@ -75,39 +77,74 @@ export default function JourneyPage() {
     else if (type === 'questions') setCurrentScene('result');
   }, []);
 
-  // --- ฟังก์ชันสำหรับแชร์หรือคัดลอก ---
+  // --- 4. ฟังก์ชันสำหรับแชร์ที่ปรับปรุงใหม่ ---
   const handleShare = async () => {
-    if (!recommendedCareer) return;
+    if (!recommendedCareer || !pageRef.current) return;
 
-    const shareText = `ฉันค้นพบเส้นทางอาชีพสายเทคแล้ว! ผลลัพธ์ของฉันคือ "${recommendedCareer.name}" มาค้นหาเส้นทางของคุณได้เลยที่: [ใส่ URL ของเว็บคุณที่นี่]`;
-    
-    const shareData = {
-      title: 'เส้นทางอาชีพสายเทคของฉัน',
-      text: shareText,
-      url: window.location.href, // หรือ URL ของเว็บคุณ
-    };
+    setIsProcessingShare(true); // เริ่มกระบวนการ
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.error("Error sharing:", err);
+    try {
+      // จับภาพ Element ที่เราอ้างอิงด้วย pageRef
+      const canvas = await html2canvas(pageRef.current, {
+        useCORS: true, // สำหรับกรณีที่มีรูปภาพจากโดเมนอื่น
+        allowTaint: true,
+        onclone: (document) => {
+           // ซ่อนปุ่มแชร์ก่อนจับภาพ เพื่อไม่ให้ปุ่มติดไปในรูป
+           const button = document.querySelector('#share-button');
+           if (button) (button as HTMLElement).style.display = 'none';
+        }
+      });
+      
+      // แปลง canvas เป็น Blob
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+
+      if (!blob) {
+        throw new Error("ไม่สามารถสร้างไฟล์ภาพได้");
       }
-    } else {
-      // Fallback for desktop: copy to clipboard
+
+      const file = new File([blob], 'my-tech-journey.png', { type: 'image/png' });
+      const shareText = `ฉันค้นพบเส้นทางอาชีพสายเทคแล้ว! ผลลัพธ์ของฉันคือ "${recommendedCareer.name}" มาค้นหาเส้นทางของคุณได้เลยที่: [ใส่ URL ของเว็บคุณที่นี่]`;
+      
+      const shareData = {
+        title: 'เส้นทางอาชีพสายเทคของฉัน',
+        text: shareText,
+        files: [file], // แนบไฟล์ภาพ
+      };
+
+      // ตรวจสอบว่า Web Share API สามารถแชร์ไฟล์ได้หรือไม่
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: ถ้าแชร์ไฟล์ไม่ได้ ให้ดาวน์โหลดภาพแทน
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'my-tech-journey.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+    } catch (err) {
+      console.error("Error sharing:", err);
+      // กรณีเกิด Error อาจจะ fallback ไปที่การ copy ข้อความแบบเดิม
+      const shareText = `ฉันค้นพบเส้นทางอาชีพสายเทคแล้ว! ผลลัพธ์ของฉันคือ "${recommendedCareer.name}" มาค้นหาเส้นทางของคุณได้เลยที่: [ใส่ URL ของเว็บคุณที่นี่]`;
       navigator.clipboard.writeText(shareText);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000); // Reset afrer 2 seconds
+      alert("ไม่สามารถแชร์รูปภาพได้, คัดลอกข้อความไปยังคลิปบอร์ดแล้ว");
+    } finally {
+      setIsProcessingShare(false); // สิ้นสุดกระบวนการ
     }
   };
 
   return (
-    <div style={{ width: '100vw', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    // 3. ผูก Ref เข้ากับ Div หลัก
+    <div ref={pageRef} style={{ width: '100vw', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       {currentScene === 'home' && <HomePage onStart={handleStartJourney} />}
 
       {(currentScene === 'introVideo' || currentScene === 'questions' || currentScene === 'result') && (
         <>
-          <VideoBackground videoSrc="/train.mp4" audioSrc="/audio/wind_sound.mp3" onVideoReady={handleVideoReady} />
+          <VideoBackground videoSrc="/train.mp4" audioSrc="/rapid-train.mp3" onVideoReady={handleVideoReady} />
 
           {(currentScene === 'introVideo' || currentScene === 'questions') && (
             <QuestionOverlay
@@ -118,7 +155,6 @@ export default function JourneyPage() {
             />
           )}
 
-          {/* --- หน้าผลลัพธ์ที่ปรับปรุงใหม่ --- */}
           {currentScene === 'result' && recommendedCareer && (
             <div style={{
               position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
@@ -128,7 +164,7 @@ export default function JourneyPage() {
               <div style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-                padding: 'clamp(20px, 5vw, 40px)', // Responsive padding
+                padding: 'clamp(20px, 5vw, 40px)',
                 borderRadius: '20px',
                 maxWidth: '800px', width: '95%',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
@@ -145,9 +181,10 @@ export default function JourneyPage() {
                   {recommendedCareer.description}
                 </p>
                 
-                {/* --- ปุ่มแชร์ --- */}
                 <button
+                  id="share-button" // เพิ่ม id เพื่อให้ซ่อนได้ง่าย
                   onClick={handleShare}
+                  disabled={isProcessingShare} // ปิดการใช้งานปุ่มขณะทำงาน
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -157,20 +194,20 @@ export default function JourneyPage() {
                     fontSize: '1rem',
                     fontWeight: 'bold',
                     color: '#fff',
-                    backgroundColor: isCopied ? '#28a745' : 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: isProcessingShare ? '#555' : 'rgba(255, 255, 255, 0.2)',
                     border: '1px solid rgba(255, 255, 255, 0.5)',
                     borderRadius: '50px',
-                    cursor: 'pointer',
+                    cursor: isProcessingShare ? 'wait' : 'pointer',
                     transition: 'all 0.3s ease',
                     marginTop: '2rem',
                     alignSelf: 'center',
                     minWidth: '180px'
                   }}
-                  onMouseOver={(e) => { if (!isCopied) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; }}
-                  onMouseOut={(e) => { if (!isCopied) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'; }}
+                  onMouseOver={(e) => { if (!isProcessingShare) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; }}
+                  onMouseOut={(e) => { if (!isProcessingShare) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'; }}
                 >
                   <ShareIcon />
-                  {isCopied ? 'คัดลอกแล้ว!' : 'แชร์ผลลัพธ์'}
+                  {isProcessingShare ? 'กำลังสร้างภาพ...' : 'แชร์ผลลัพธ์'}
                 </button>
 
                 <p style={{ fontSize: 'clamp(0.9rem, 2vw, 1rem)', fontStyle: 'italic', color: '#CFD8DC', marginTop: '1rem' }}>
