@@ -86,7 +86,7 @@ const HomePage = ({ onStart }: { onStart: () => void }) => {
           lineHeight: '1.6'
         }}
       >
-        ตอบคำถามสั้นๆ เพื่อค้นพบว่าอาชีพสายเทคโนโลยีที่ ปลายทาง
+        ตอบคำถามสั้นๆ เพื่อค้นพบอาชีพสายเทคโนโลยีที่ ปลายทาง
       </p>
       <button
         className="home-button"

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { questions as questionsData } from '../../data/questionsData';
 
-// Definisikan tipe untuk opsi pertanyaan untuk keamanan tipe
 type QuestionOption = {
   text: string;
   scores: { [key: string]: number };
@@ -17,12 +16,10 @@ type QuestionOverlayProps = {
 
 const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }: QuestionOverlayProps) => {
   const storyIntroRef = useRef<HTMLParagraphElement>(null);
-  // Mengganti ref dari container menjadi wrapper untuk elemen-elemen pertanyaan
   const questionWrapperRef = useRef<HTMLDivElement>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [showStoryIntro, setShowStoryIntro] = useState(!!storyIntro);
 
-  // Efek untuk animasi intro cerita (tidak ada perubahan di sini)
   useEffect(() => {
     if (showStoryIntro && storyIntroRef.current && storyIntro) {
       gsap.fromTo(
@@ -35,7 +32,7 @@ const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }:
         y: -30,
         duration: 1,
         ease: 'power2.in',
-        delay: 6, // Memberi waktu lebih lama untuk membaca
+        delay: 6,
         onComplete: () => {
           setShowStoryIntro(false);
           onOverlayComplete('intro');
@@ -48,41 +45,29 @@ const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }:
     }
   }, [storyIntro, onOverlayComplete]);
 
-  // --- PERUBAHAN UTAMA: EFEK ANIMASI UNTUK PERTANYAAN & JAWABAN ---
   useEffect(() => {
     if (currentQuestionIndex !== -1 && questionWrapperRef.current) {
-      // Ambil semua elemen yang akan dianimasikan
       const wrapper = questionWrapperRef.current;
       const storyText = wrapper.querySelector('.question-story');
       const questionText = wrapper.querySelector('.question-text');
       const optionButtons = wrapper.querySelectorAll('.option-button');
 
-      // Gunakan timeline GSAP untuk mengontrol urutan animasi
       const tl = gsap.timeline();
-      
-      // Animasikan elemen-elemen agar "melayang" masuk
       tl.fromTo(wrapper, { opacity: 0 }, { opacity: 1, duration: 0.5 })
         .fromTo(storyText, 
-            { opacity: 0, y: 20 }, 
-            { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 
-            '+=0.2' // Mulai 0.2 detik setelah wrapper muncul
+          { opacity: 0, y: 20 }, 
+          { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 
+          '+=0.2'
         )
         .fromTo(questionText, 
-            { opacity: 0, y: 20 }, 
-            { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' },
-            '-=0.5' // Mulai sedikit setelah cerita muncul
+          { opacity: 0, y: 20 }, 
+          { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' },
+          '-=0.5'
         )
         .fromTo(optionButtons, 
-            { opacity: 0, y: 20 }, 
-            { 
-              opacity: 1, 
-              y: 0, 
-              duration: 0.6, 
-              ease: 'power3.out',
-              // stagger membuat setiap tombol muncul satu per satu
-              stagger: 0.15 
-            },
-            '-=0.4' // Mulai sedikit setelah pertanyaan muncul
+          { opacity: 0, y: 20 }, 
+          { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out', stagger: 0.15 },
+          '-=0.4'
         );
     }
   }, [currentQuestionIndex]);
@@ -90,7 +75,6 @@ const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }:
   const handleAnswer = (option: QuestionOption) => {
     if (!questionWrapperRef.current) return;
 
-    // Animasikan semua elemen pertanyaan agar menghilang bersamaan
     gsap.to(questionWrapperRef.current, {
       opacity: 0,
       y: -50,
@@ -100,7 +84,6 @@ const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }:
         onAnswer(option);
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(prevIndex => {
-            // Reset posisi Y sebelum pertanyaan berikutnya muncul
             gsap.set(questionWrapperRef.current, { y: 0 });
             return prevIndex + 1;
           });
@@ -125,61 +108,78 @@ const QuestionOverlay = ({ storyIntro, questions, onAnswer, onOverlayComplete }:
       justifyContent: 'center',
       alignItems: 'center',
       color: 'white',
-      padding: '20px', // Tambahkan padding agar tidak terlalu mepet ke tepi layar
+      padding: '20px',
       pointerEvents: showStoryIntro || currentQuestionIndex === -1 ? 'none' : 'auto',
-      zIndex: 20
+      zIndex: 20,
+      boxSizing: 'border-box'
     }}>
       {showStoryIntro && storyIntro && (
         <p ref={storyIntroRef} style={{
-          fontSize: '2.5rem',
+          fontSize: 'clamp(1.2rem, 4vw, 2.5rem)',
           textAlign: 'center',
-          maxWidth: '80%',
-          lineHeight: '1.5',
+          maxWidth: '90%',
+          lineHeight: '1.6',
           opacity: 0,
           fontFamily: 'Georgia, serif',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.7)' // Bayangan teks lebih tebal
+          textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+          padding: '0 1rem',
         }}>
           {storyIntro}
         </p>
       )}
 
-      {/* --- PERUBAHAN UTAMA: MENGHILANGKAN BINGKAI DAN MENGGUNAKAN WRAPPER BARU --- */}
       {!showStoryIntro && currentQuestion && (
         <div 
           ref={questionWrapperRef} 
           style={{
             width: '90%',
-            maxWidth: '800px', // Lebarkan sedikit agar teks lebih nyaman dibaca
+            maxWidth: '800px',
             textAlign: 'center',
-            opacity: 0, // Mulai dengan transparan untuk dianimasikan
+            opacity: 0,
+            boxSizing: 'border-box'
           }}
         >
-          {/* Tambahkan className agar bisa ditarget oleh GSAP */}
-          <p className="question-story" style={{ fontSize: '1.4rem', marginBottom: '1.5rem', fontStyle: 'italic', textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
+          <p className="question-story" style={{
+            fontSize: 'clamp(1rem, 3vw, 1.4rem)',
+            marginBottom: '1.5rem',
+            fontStyle: 'italic',
+            textShadow: '1px 1px 3px rgba(0,0,0,0.7)'
+          }}>
             {currentQuestion.story}
           </p>
-          <h2 className="question-text" style={{ fontSize: '2.2rem', marginBottom: '3rem', fontWeight: 'bold', textShadow: '2px 2px 4px rgba(0,0,0,0.7)' }}>
+          <h2 className="question-text" style={{
+            fontSize: 'clamp(1.5rem, 5vw, 2.2rem)',
+            marginBottom: '2rem',
+            fontWeight: 'bold',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.7)'
+          }}>
             {currentQuestion.question}
           </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            alignItems: 'center',
+            width: '100%',
+          }}>
             {currentQuestion.options.map((option, index) => (
               <button
                 key={index}
-                // Tambahkan className agar bisa ditarget oleh GSAP
                 className="option-button" 
                 onClick={() => handleAnswer(option)}
                 style={{
-                  padding: '15px 30px',
-                  fontSize: '1.2rem',
-                  backgroundColor: 'rgba(0, 0, 0, 0.4)', // Sedikit lebih gelap agar kontras
+                  padding: '12px 20px',
+                  fontSize: 'clamp(1rem, 2.5vw, 1.2rem)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
                   color: 'white',
                   border: '1px solid rgba(255, 255, 255, 0.4)',
-                  borderRadius: '50px', // Membuat tombol menjadi lebih bulat (pill shape)
+                  borderRadius: '50px',
                   cursor: 'pointer',
                   transition: 'background-color 0.3s ease, transform 0.2s ease',
                   width: '100%',
-                  maxWidth: '500px', // Batasi lebar tombol
-                  opacity: 0, // Mulai dengan transparan
+                  maxWidth: '500px',
+                  opacity: 0,
+                  boxSizing: 'border-box'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
