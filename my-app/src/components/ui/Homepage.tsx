@@ -1,16 +1,26 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 
-const HomePage = ({ onStart }: { onStart: () => void }) => {
+// อัปเดต Type ของ props ให้ onStart รับ name และ age
+type HomePageProps = {
+  onStart: (name: string, age: string) => void;
+};
+
+const HomePage = ({ onStart }: HomePageProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  // เพิ่ม state สำหรับเก็บชื่อและอายุ
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
   
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
       const title = container.querySelector('.home-title');
       const subtitle = container.querySelector('.home-subtitle');
+      // เพิ่ม selector สำหรับกล่อง input
+      const inputs = container.querySelector('.home-inputs'); 
       const button = container.querySelector('.home-button');
 
       const tl = gsap.timeline();
@@ -22,23 +32,36 @@ const HomePage = ({ onStart }: { onStart: () => void }) => {
       .fromTo(subtitle, 
         { y: 30, opacity: 0 }, 
         { y: 0, opacity: 1, duration: 1, ease: 'power3.out' },
-        "-=0.8" 
+        "-=0.9" 
+      )
+      // เพิ่ม animation สำหรับช่อง input
+      .fromTo(inputs,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: 'power3.out' },
+        "-=0.8"
       )
       .fromTo(button, 
         { scale: 0.8, opacity: 0 },
         { scale: 1, opacity: 1, duration: 1, ease: 'elastic.out(1, 0.75)' },
-        "-=0.6" 
+        "-=0.7" 
       );
     }
   }, []);
 
   const handleStartClick = () => {
+    // ตรวจสอบว่าผู้ใช้กรอกชื่อและอายุหรือไม่
+    if (!name.trim() || !age.trim()) {
+      alert('เเฮร่! บอกชื่อกับอายุก่อนสิคนเก่ง');
+      return;
+    }
+
     if (containerRef.current) {
       gsap.to(containerRef.current, {
         opacity: 0,
         duration: 0.8,
         ease: 'power2.in',
-        onComplete: onStart
+        // ส่งค่า name และ age กลับไปเมื่อ animation จบ
+        onComplete: () => onStart(name, age) 
       });
     }
   };
@@ -73,7 +96,8 @@ const HomePage = ({ onStart }: { onStart: () => void }) => {
           lineHeight: '1.3'
         }}
       >
-        พร้อมออกเดินทางไปกับรถไฟขบวนนี้หรือยัง
+        สวัสดี ยินดีคนเก่ง
+        <br/> ต้อนรับสู่นีโม่ขอฮีล
       </h1>
       <p 
         className="home-subtitle"
@@ -82,12 +106,61 @@ const HomePage = ({ onStart }: { onStart: () => void }) => {
           maxWidth: '90%',
           color: '#E0E0E0',
           textShadow: '1px 1px 3px rgba(0,0,0,0.7)',
-          marginBottom: '3rem',
+          marginBottom: '2rem', // ปรับระยะห่าง
           lineHeight: '1.6'
         }}
       >
-        ตอบคำถามสั้นๆ เพื่อค้นพบอาชีพสายเทคโนโลยีที่ ปลายทาง
+        เเฮร่! ว่าเเต่คนเก่งชื่ออะไรเอ่ย
       </p>
+
+      {/* เพิ่มส่วนของ Input Fields */}
+      <div 
+        className="home-inputs"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+          width: '100%',
+          maxWidth: '400px',
+          marginBottom: '2.5rem',
+        }}
+      >
+        <input
+          type="text"
+          placeholder="ชื่อของคุณ"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={{
+            fontSize: 'clamp(1rem, 3vw, 1.1rem)',
+            padding: '1rem',
+            borderRadius: '12px',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            color: 'white',
+            textAlign: 'center',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        />
+        <input
+          type="number"
+          placeholder="อายุ"
+          value={age}
+          onChange={(e) => setAge(e.target.value)}
+          style={{
+            fontSize: 'clamp(1rem, 3vw, 1.1rem)',
+            padding: '1rem',
+            borderRadius: '12px',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            color: 'white',
+            textAlign: 'center',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}
+        />
+      </div>
+
       <button
         className="home-button"
         onClick={handleStartClick}
@@ -115,7 +188,7 @@ const HomePage = ({ onStart }: { onStart: () => void }) => {
           e.currentTarget.style.boxShadow = '0 5px 20px rgba(255, 255, 255, 0.3)';
         }}
       >
-        รับตั๋วเดินทาง
+        มาร่วมเดินทางไปกับเราสิ
       </button>
     </div>
   );
