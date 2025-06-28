@@ -65,6 +65,7 @@ const HomePage = ({ onStart }: HomePageProps) => {
       });
     }
   };
+  
 
   return (
     <div
@@ -87,6 +88,7 @@ const HomePage = ({ onStart }: HomePageProps) => {
         boxSizing: 'border-box'
       }}
     >
+      <button></button>
       <h1 
         className="home-title" 
         style={{ 

@@ -11,6 +11,8 @@ import HomePage from "../components/ui/Homepage";
 import ContactInfoPage from "../components/ui/contact";
 import FlowerScene from "@/components/ui/flower";
 import SkyMessageScene from "@/components/ui/skyscreen";
+import MysteryTableScene from "@/components/ui/tablescreen";
+import SelfComparisonScene from "@/components/ui/selfscreen";
 
 /* ---------- types ---------- */
 type UserData = { name: string; age: string };
@@ -22,8 +24,16 @@ type Scene =
   | "wake"
   | "result"
   | "flower"
-  | "skyMessage";
+  | "skyMessage"
+  | "Table"
+  | "Self";
 type WakePhase = "awake" | "sky" | "garden";
+
+type SkyData = {
+  msgToPast: string;
+  foodRemember: "yes" | "no";
+  happyThing: string;
+};
 
 /* ---------- share icon ---------- */
 const ShareIcon = () => (
@@ -57,6 +67,7 @@ export default function JourneyPage() {
   /* share */
   const [isSharing, setIsSharing] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
+  const [skyData, setSkyData] = useState<SkyData | null>(null);
 
   /* ---------- global fade-in when scene changes ---------- */
   useEffect(() => {
@@ -355,7 +366,33 @@ export default function JourneyPage() {
           <SkyMessageScene
             videoSrc="/train.mp4"
             userName={userData!.name}
-      
+            onDone={(data) => {
+              setSkyData(data); // ← เก็บค่ามาไว้
+              setScene("Table"); // ไปฉากโต๊ะ
+            }}
+          />
+        );
+      case "Table":
+        return (
+          <MysteryTableScene
+            tableImgSrc="/table/1.png"
+            userName={userData!.name}
+            happyThing={skyData!.happyThing} // ค่าที่ได้จาก SkyMessageScene
+            onFinish={(ans) => {
+              console.log(ans); // { howToday, dreamStatus, likeNow }
+              setScene("Self");
+            }}
+          />
+        );
+      case "Self":
+        return (
+          <SelfComparisonScene
+            userName={userData!.name}
+            childImg="/images/little-kid.png"
+            onChoose={(ans) => {
+              console.log(ans); // 'child' | 'now'
+              setScene("result");
+            }}
           />
         );
 
