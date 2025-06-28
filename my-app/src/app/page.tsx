@@ -10,11 +10,19 @@ import QuestionOverlay, { DayChoice } from "../components/ui/QuestionOverlay";
 import HomePage from "../components/ui/Homepage";
 import ContactInfoPage from "../components/ui/contact";
 import FlowerScene from "@/components/ui/flower";
+import SkyMessageScene from "@/components/ui/skyscreen";
 
 /* ---------- types ---------- */
 type UserData = { name: string; age: string };
 type ContactData = { helpNeeded: "yes" | "no"; lineId: string; phone: string };
-type Scene = "home" | "contact" | "introVideo" | "wake" | "result" | "flower";
+type Scene =
+  | "home"
+  | "contact"
+  | "introVideo"
+  | "wake"
+  | "result"
+  | "flower"
+  | "skyMessage";
 type WakePhase = "awake" | "sky" | "garden";
 
 /* ---------- share icon ---------- */
@@ -338,8 +346,16 @@ export default function JourneyPage() {
             userName={userData!.name}
             onComplete={(color, feeling) => {
               console.log("picked:", color, feeling);
-              setScene("result");
+              setScene("skyMessage");
             }}
+          />
+        );
+      case "skyMessage":
+        return (
+          <SkyMessageScene
+            videoSrc="/train.mp4"
+            userName={userData!.name}
+      
           />
         );
 
