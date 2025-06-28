@@ -1,7 +1,7 @@
 // app/JourneyPage.tsx
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
 import gsap from "gsap";
 
@@ -9,12 +9,13 @@ import VideoBackground from "../components/ui/VideoBackground";
 import QuestionOverlay, { DayChoice } from "../components/ui/QuestionOverlay";
 import HomePage from "../components/ui/Homepage";
 import ContactInfoPage from "../components/ui/contact";
+import FlowerScene from "@/components/ui/flower";
 
 /* ---------- types ---------- */
 type UserData = { name: string; age: string };
 type ContactData = { helpNeeded: "yes" | "no"; lineId: string; phone: string };
-type Scene = "home" | "contact" | "introVideo" | "wake" | "result";
-type WakePhase = "awake" | "sky" |"garden";
+type Scene = "home" | "contact" | "introVideo" | "wake" | "result" | "flower";
+type WakePhase = "awake" | "sky" | "garden";
 
 /* ---------- share icon ---------- */
 const ShareIcon = () => (
@@ -62,39 +63,41 @@ export default function JourneyPage() {
 
   /* ---------- wake-phase animation ---------- */
   useEffect(() => {
-  if (scene !== "wake") return;
+    if (scene !== "wake") return;
 
-  let t: NodeJS.Timeout;
+    let t: NodeJS.Timeout;
 
-  if (wakePhase === "awake") {
-    // ข้อความแรก
-    gsap.fromTo("#wake-msg", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1 });
-    gsap.to("#wake-msg", { opacity: 0, y: -30, duration: 1, delay: 2.5 });
+    if (wakePhase === "awake") {
+      gsap.fromTo(
+        "#wake-msg",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 1 }
+      );
+      gsap.to("#wake-msg", { opacity: 0, y: -30, duration: 1, delay: 2.5 });
+      t = setTimeout(() => setWakePhase("sky"), 3000);
+    }
 
-    // → ไป sky หลัง 3 วิ
-    t = setTimeout(() => setWakePhase("sky"), 3000);
-  }
+    if (wakePhase === "sky") {
+      gsap.fromTo(
+        "#sky-msg",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 1 }
+      );
+      gsap.to("#sky-msg", { opacity: 0, y: -30, duration: 1, delay: 4 });
+      t = setTimeout(() => setWakePhase("garden"), 3000);
+    }
 
-  if (wakePhase === "sky") {
-    // ข้อความฟ้า
-    gsap.fromTo("#sky-msg", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1 });
-    gsap.to("#sky-msg", { opacity: 0, y: -30, duration: 1, delay: 4 });
+    if (wakePhase === "garden") {
+      gsap.fromTo(
+        "#garden-msg",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 1 }
+      );
+      t = setTimeout(() => setScene("flower"), 3000);
+    }
 
-    // → ไป garden หลัง 6 วิ (นับจากเข้า sky)
-    t = setTimeout(() => setWakePhase("garden"), 6000);
-  }
-
-  if (wakePhase === "garden") {
-    // ข้อความสวน
-    gsap.fromTo("#garden-msg", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1 });
-
-    // → ไป result หลัง 5 วิ
-    t = setTimeout(() => setScene("result"), 5000);
-  }
-
-  return () => clearTimeout(t);
-}, [scene, wakePhase]);
-
+    return () => clearTimeout(t);
+  }, [scene, wakePhase]);
   /* ---------- handlers ---------- */
   const handleStart = useCallback((name: string, age: string) => {
     setUserData({ name, age });
@@ -108,6 +111,18 @@ export default function JourneyPage() {
       console.log("All collected info:", { ...userData, ...data });
     },
     [userData]
+  );
+
+  const wakeBg = useMemo(
+    () => (
+      <VideoBackground
+        key="wakeBg"
+        videoSrc="/wake.mp4"
+        audioSrc="/wake-sound.mp3"
+        onVideoReady={() => {}}
+      />
+    ),
+    []
   );
 
   /* share button */
@@ -124,7 +139,9 @@ export default function JourneyPage() {
           if (btn) (btn as HTMLElement).style.display = "none";
         },
       });
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+      const blob = await new Promise<Blob | null>((res) =>
+        canvas.toBlob(res, "image/png")
+      );
       if (!blob) throw new Error("toBlob error");
 
       const file = new File([blob], "my-journey.png", { type: "image/png" });
@@ -181,11 +198,7 @@ export default function JourneyPage() {
       case "wake":
         return (
           <>
-            <VideoBackground
-              videoSrc="/wake.mp4"
-              audioSrc="/wake-sound.mp3"
-              onVideoReady={() => {}}
-            />
+            {wakeBg}
 
             <div
               style={{
@@ -223,14 +236,15 @@ export default function JourneyPage() {
                     padding: "0 5vw",
                   }}
                 >
-                  แล้ววันนี้เป็นวันที่&nbsp;{userData?.name}&nbsp;ต้องการ…<br />
+                  แล้ววันนี้เป็นวันที่&nbsp;{userData?.name}&nbsp;ต้องการ…
+                  <br />
                   ช่างแปลกแฮะ&nbsp;ท้องฟ้าดูไม่มืดครึ้มเลย
                 </p>
               )}
 
-              {wakePhase === "sky" && (
+              {wakePhase === "garden" && (
                 <p
-                  id="sky-msg"
+                  id="garden-msg"
                   style={{
                     fontSize: "clamp(1.4rem,4vw,2.4rem)",
                     color: "#E0F7FA",
@@ -240,7 +254,8 @@ export default function JourneyPage() {
                     padding: "0 5vw",
                   }}
                 >
-                  คุณกําลังเดินไปที่สวนหลังบ้าน<br />
+                  คุณกําลังเดินไปที่สวนหลังบ้าน
+                  <br />
                   บ้านที่คุณอยู่&nbsp;สวนดอกไม้สวยมากๆเลย
                 </p>
               )}
@@ -316,6 +331,16 @@ export default function JourneyPage() {
               </div>
             )}
           </>
+        );
+      case "flower":
+        return (
+          <FlowerScene
+            userName={userData!.name}
+            onComplete={(color, feeling) => {
+              console.log("picked:", color, feeling);
+              setScene("result");
+            }}
+          />
         );
 
       default:
