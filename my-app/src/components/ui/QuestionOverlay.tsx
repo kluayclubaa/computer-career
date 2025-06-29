@@ -9,7 +9,7 @@ export type DayChoice = "วันที่มีเเดดร่ำไรอ�
 type QuestionOverlayProps = {
   userName: string;
   storyIntro?: string;
-  onOverlayComplete: (choice: DayChoice) => void;
+  onOverlayComplete: (choice: DayChoice, userStory: string, tired: number) => void;
 };
 
 const baseStyle: React.CSSProperties = {
@@ -144,6 +144,11 @@ const QuestionOverlay = ({
 
   const dayChoices: DayChoice[] = ["วันที่มีเเดดร่ำไรอ่อนๆ", "วันที่มีรุ้งกินน้ำหลังฝนตก", "วันที่อากาศปลอดโปร่งฟ้าโปร่งใส", "วันที่มีเเสงเเดดจ้ามีนกบินมา"];
 
+   const handleChoiceClick = (choice: DayChoice) => {
+    // เรียก onOverlayComplete พร้อมกับข้อมูลทั้งหมด
+    onOverlayComplete(choice, userStory, tired);
+  };
+
   /* ---------- render ---------- */
   return (
     <div style={baseStyle}>
@@ -260,7 +265,7 @@ const QuestionOverlay = ({
                 onMouseOut={(e) =>
                   (e.currentTarget.style.transform = "scale(1)")
                 }
-                onClick={() => onOverlayComplete(choice)}
+               onClick={() => handleChoiceClick(choice)}
               >
                 {choice}
               </button>

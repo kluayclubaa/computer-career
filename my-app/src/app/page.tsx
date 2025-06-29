@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
 import gsap from "gsap";
 
+// Import components
 import VideoBackground from "../components/ui/VideoBackground";
 import QuestionOverlay, { DayChoice } from "../components/ui/QuestionOverlay";
 import HomePage from "../components/ui/Homepage";
@@ -16,9 +17,36 @@ import SelfComparisonScene from "@/components/ui/selfscreen";
 import ChildJourneyScene from "@/components/ui/child";
 import NemoMessageScene from "@/components/ui/NemoMessageScene";
 
+// ★ Import a function for saving data to Firebase
+import { saveDataToFirebase } from "@/lib/firebase";
+
 /* ---------- types ---------- */
+// Data types from each component
 type UserData = { name: string; age: string };
 type ContactData = { helpNeeded: "yes" | "no"; lineId: string; phone: string };
+type QuestionOverlayData = { userStory: string; tired: number, dayChoice: DayChoice };
+type FlowerData = { color: string; feeling: string };
+type SkyData = { msgToPast: string; foodRemember: "yes" | "no"; happyThing: string };
+type TableData = { howToday: string; dreamStatus: any; likeNow: any; likeSelf: any; };
+type SelfChoice = { selfChoice: "past" | "now" };
+type ChildJourneyData = { ageGuess: string; difficult: string; reflectMsg: string; gratitudeMsg: string; apologyMsg: string; };
+type NemoData = { tiredChoice: string; ventMsg: string; lessonMsg: string; };
+
+
+// ★ Create a type that combines all the data.
+export type AllUserData = {
+  user?: UserData;
+  contact?: ContactData;
+  questionOverlay?: QuestionOverlayData;
+  flower?: FlowerData;
+  sky?: SkyData;
+  table?: TableData;
+  self?: SelfChoice;
+  childJourney?: ChildJourneyData;
+  nemo?: NemoData;
+};
+
+
 type Scene =
   | "home"
   | "contact"
@@ -33,17 +61,6 @@ type Scene =
   | "NemoMessage";
 type WakePhase = "awake" | "sky" | "garden";
 
-type SkyData = {
-  msgToPast: string;
-  foodRemember: "yes" | "no";
-  happyThing: string;
-};
-
-type NemoData = { 
-  tiredChoice: string; 
-  ventMsg: string; 
-  lessonMsg: string; 
-};
 
 /* ---------- share icon ---------- */
 const ShareIcon = () => (
@@ -71,14 +88,12 @@ export default function JourneyPage() {
   const [wakePhase, setWakePhase] = useState<WakePhase>("awake");
 
   /* user data */
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [contactData, setContactData] = useState<ContactData | null>(null);
-   const [nemoData, setNemoData] = useState<NemoData | null>(null);
+  // ★ Use a single state to collect all data.
+  const [allUserData, setAllUserData] = useState<AllUserData>({});
 
   /* share */
   const [isSharing, setIsSharing] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
-  const [skyData, setSkyData] = useState<SkyData | null>(null);
 
   /* ---------- global fade-in when scene changes ---------- */
   useEffect(() => {
@@ -128,20 +143,24 @@ export default function JourneyPage() {
 
     return () => clearTimeout(t);
   }, [scene, wakePhase]);
+
   /* ---------- handlers ---------- */
   const handleStart = useCallback((name: string, age: string) => {
-    setUserData({ name, age });
+    const userData = { name, age };
+    setAllUserData(prev => ({ ...prev, user: userData }));
     setScene("contact");
   }, []);
 
-  const handleContactComplete = useCallback(
-    (data: ContactData) => {
-      setContactData(data);
-      setScene("introVideo");
-      console.log("All collected info:", { ...userData, ...data });
-    },
-    [userData]
-  );
+  const handleContactComplete = useCallback((data: ContactData) => {
+    setAllUserData(prev => ({ ...prev, contact: data }));
+    setScene("introVideo");
+  }, []);
+
+  const handleQuestionOverlayComplete = useCallback((data: QuestionOverlayData) => {
+    setAllUserData(prev => ({ ...prev, questionOverlay: data }));
+    setWakePhase("awake");
+    setScene("wake");
+  }, []);
 
   const wakeBg = useMemo(
     () => (
@@ -213,10 +232,13 @@ export default function JourneyPage() {
               audioSrc="/rapid-train.mp3"
               onVideoReady={() => {}}
             />
-            {userData && (
+            {allUserData.user && (
               <QuestionOverlay
-                userName={userData.name}
-                onOverlayComplete={() => {
+                userName={allUserData.user.name}
+                onOverlayComplete={(dayChoice, userStory, tired) => {
+                  // ★ Collect data from QuestionOverlay
+                  const questionData = { dayChoice, userStory, tired };
+                  setAllUserData(prev => ({...prev, questionOverlay: questionData}));
                   setWakePhase("awake");
                   setScene("wake");
                 }}
@@ -224,7 +246,7 @@ export default function JourneyPage() {
             )}
           </>
         );
-
+      
       case "wake":
         return (
           <>
@@ -250,7 +272,7 @@ export default function JourneyPage() {
                     textShadow: "2px 2px 6px #000",
                   }}
                 >
-                  ตอนนี้&nbsp;{userData?.name}&nbsp;กำลังตื่นจากที่นอน
+                  ตอนนี้&nbsp;{allUserData.user?.name}&nbsp;กำลังตื่นจากที่นอน
                 </p>
               )}
 
@@ -266,7 +288,7 @@ export default function JourneyPage() {
                     padding: "0 5vw",
                   }}
                 >
-                  แล้ววันนี้เป็นวันที่&nbsp;{userData?.name}&nbsp;ต้องการ…
+                  แล้ววันนี้เป็นวันที่&nbsp;{allUserData.user?.name}&nbsp;ต้องการ…
                   <br />
                   ช่างแปลกแฮะ&nbsp;ท้องฟ้าดูไม่มืดครึ้มเลย
                 </p>
@@ -301,7 +323,7 @@ export default function JourneyPage() {
               audioSrc="/rapid-train.mp3"
               onVideoReady={() => {}}
             />
-            {userData && (
+            {allUserData.user && (
               <div
                 style={{
                   position: "absolute",
@@ -329,7 +351,7 @@ export default function JourneyPage() {
                       marginBottom: 16,
                     }}
                   >
-                    นีโม่ขอฮีลให้&nbsp;{userData.name}
+                    นีโม่ขอฮีลให้&nbsp;{allUserData.user.name}
                   </h2>
                   <p style={{ fontSize: "clamp(1rem,2.4vw,1.2rem)" }}>
                     การเริ่มต้นใหม่ในชีวิต<br/> ไม่ว่าจะร้ายหรือดีทุกอย่างเป็นบทเรียนเองนะ <br/> เเล้วพายุจะผ่านไป
@@ -343,9 +365,10 @@ export default function JourneyPage() {
       case "flower":
         return (
           <FlowerScene
-            userName={userData!.name}
+            userName={allUserData.user!.name}
             onComplete={(color, feeling) => {
-              console.log("picked:", color, feeling);
+              // ★ Collect data from FlowerScene
+              setAllUserData(prev => ({ ...prev, flower: { color, feeling } }));
               setScene("skyMessage");
             }}
           />
@@ -354,10 +377,11 @@ export default function JourneyPage() {
         return (
           <SkyMessageScene
             videoSrc="/train.mp4"
-            userName={userData!.name}
+            userName={allUserData.user!.name}
             onDone={(data) => {
-              setSkyData(data); // ← เก็บค่ามาไว้
-              setScene("Table"); // ไปฉากโต๊ะ
+              // ★ Collect data from SkyMessageScene
+              setAllUserData(prev => ({ ...prev, sky: data }));
+              setScene("Table");
             }}
           />
         );
@@ -365,10 +389,11 @@ export default function JourneyPage() {
         return (
           <MysteryTableScene
             tableImgSrc="/table/1.png"
-            userName={userData!.name}
-            happyThing={skyData!.happyThing} // ค่าที่ได้จาก SkyMessageScene
+            userName={allUserData.user!.name}
+            happyThing={allUserData.sky!.happyThing}
             onFinish={(ans) => {
-              console.log(ans); // { howToday, dreamStatus, likeNow }
+              // ★ Collect data from MysteryTableScene
+              setAllUserData(prev => ({ ...prev, table: ans }));
               setScene("Self");
             }}
           />
@@ -376,10 +401,11 @@ export default function JourneyPage() {
       case "Self":
         return (
           <SelfComparisonScene
-            userName={userData!.name}
+            userName={allUserData.user!.name}
             childImg="/child/1.png"
             onChoose={(ans) => {
-              console.log(ans);
+              // ★ Collect data from SelfComparisonScene
+              setAllUserData(prev => ({ ...prev, self: { selfChoice: ans } }));
               setScene("ChildJourney");
             }}
           />
@@ -388,17 +414,30 @@ export default function JourneyPage() {
         return (
           <ChildJourneyScene
             onComplete={(data) => {
-              console.log(data);
+              // ★ Collect data from ChildJourneyScene
+              setAllUserData(prev => ({ ...prev, childJourney: data }));
               setScene("NemoMessage");
             }}
           />
         );
-        case "NemoMessage":
+      case "NemoMessage":
         return (
           <NemoMessageScene
             onComplete={(data) => {
-              console.log("Nemo messages complete:", data);
-              setNemoData(data); 
+              // ★ Collect data from NemoMessageScene and trigger saving
+              const finalData = { ...allUserData, nemo: data };
+              setAllUserData(finalData);
+
+              // ★★★ Save all collected data to Firebase ★★★
+              console.log("Saving all data to Firebase:", finalData);
+              saveDataToFirebase(finalData).then(result => {
+                if(result.success) {
+                  console.log("Successfully saved data with ID:", result.id)
+                } else {
+                  console.error("Failed to save data:", result.error);
+                }
+              });
+
               setScene("result"); 
             }}
           />
