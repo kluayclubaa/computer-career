@@ -13,6 +13,8 @@ import FlowerScene from "@/components/ui/flower";
 import SkyMessageScene from "@/components/ui/skyscreen";
 import MysteryTableScene from "@/components/ui/tablescreen";
 import SelfComparisonScene from "@/components/ui/selfscreen";
+import ChildJourneyScene from "@/components/ui/child";
+import NemoMessageScene from "@/components/ui/NemoMessageScene";
 
 /* ---------- types ---------- */
 type UserData = { name: string; age: string };
@@ -26,13 +28,21 @@ type Scene =
   | "flower"
   | "skyMessage"
   | "Table"
-  | "Self";
+  | "Self"
+  | "ChildJourney"
+  | "NemoMessage";
 type WakePhase = "awake" | "sky" | "garden";
 
 type SkyData = {
   msgToPast: string;
   foodRemember: "yes" | "no";
   happyThing: string;
+};
+
+type NemoData = { 
+  tiredChoice: string; 
+  ventMsg: string; 
+  lessonMsg: string; 
 };
 
 /* ---------- share icon ---------- */
@@ -63,6 +73,7 @@ export default function JourneyPage() {
   /* user data */
   const [userData, setUserData] = useState<UserData | null>(null);
   const [contactData, setContactData] = useState<ContactData | null>(null);
+   const [nemoData, setNemoData] = useState<NemoData | null>(null);
 
   /* share */
   const [isSharing, setIsSharing] = useState(false);
@@ -321,31 +332,9 @@ export default function JourneyPage() {
                     นีโม่ขอฮีลให้&nbsp;{userData.name}
                   </h2>
                   <p style={{ fontSize: "clamp(1rem,2.4vw,1.2rem)" }}>
-                    ขอให้วันนี้เป็นวันพักผ่อนที่สบายใจนะ 💙
+                    การเริ่มต้นใหม่ในชีวิต<br/> ไม่ว่าจะร้ายหรือดีทุกอย่างเป็นบทเรียนเองนะ <br/> เเล้วพายุจะผ่านไป
                   </p>
 
-                  <button
-                    id="share-button"
-                    disabled={isSharing}
-                    onClick={handleShare}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      margin: "2rem auto 0",
-                      padding: "12px 24px",
-                      fontWeight: 700,
-                      borderRadius: 40,
-                      border: "1px solid rgba(255,255,255,.5)",
-                      background: isSharing
-                        ? "rgba(255,255,255,.2)"
-                        : "rgba(255,255,255,.15)",
-                      cursor: isSharing ? "wait" : "pointer",
-                    }}
-                  >
-                    <ShareIcon />
-                    {isSharing ? "กำลังสร้างรูป..." : "แชร์ผล"}
-                  </button>
                 </div>
               </div>
             )}
@@ -388,10 +377,29 @@ export default function JourneyPage() {
         return (
           <SelfComparisonScene
             userName={userData!.name}
-            childImg="/images/little-kid.png"
+            childImg="/child/1.png"
             onChoose={(ans) => {
-              console.log(ans); // 'child' | 'now'
-              setScene("result");
+              console.log(ans);
+              setScene("ChildJourney");
+            }}
+          />
+        );
+      case "ChildJourney":
+        return (
+          <ChildJourneyScene
+            onComplete={(data) => {
+              console.log(data);
+              setScene("NemoMessage");
+            }}
+          />
+        );
+        case "NemoMessage":
+        return (
+          <NemoMessageScene
+            onComplete={(data) => {
+              console.log("Nemo messages complete:", data);
+              setNemoData(data); 
+              setScene("result"); 
             }}
           />
         );

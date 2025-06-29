@@ -1,19 +1,8 @@
+// src/components/ui/SelfComparisonScene.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
-
-/* --------------------------------------------------------------
-   SelfComparisonScene – ปลอบใจ + เปรียบเทียบตัวเองอดีต/ปัจจุบัน
-   Flow:
-     msg1 → msg2 (+รูปเด็ก) → msg3 → msg4 → question (2 choices)
-   แต่ละข้อความค้าง 4 วินาที, เฟดอิน/เอาต์นุ่มนวล
-
-   props:
-     userName   – ชื่อผู้ใช้แทรกในข้อความ (optional)
-     childImg   – path รูปเด็ก (string)
-     onChoose   – callback(choice) เมื่อเลือก 2 ช้อยส์
-----------------------------------------------------------------*/
 
 type Choice = "past" | "now";
 
@@ -23,117 +12,141 @@ type Props = {
   onChoose?: (choice: Choice) => void;
 };
 
-type Phase = "msg1" | "msg2" | "msg3" | "msg4" | "question";
+// 1. กำหนดโครงสร้างของแต่ละ Phase ให้เป็นระเบียบใน Array
+const scenePhases = [
+  { id: "msg1", type: "message", text: (name: string) => `เราเข้าใจความรู้สึกของ ${name} นะ ไม่ว่าเธอจะเจอเรื่องอะไรมา` },
+  { id: "msg2", type: "messageWithImage", text: () => `แต่รู้มั้ย ถ้าเทียบกับเมื่อก่อน…` },
+  { id: "msg3", type: "message", text: () => `ตอนเธอยังเด็ก อายุน้อยกว่านี้…` },
+  { id: "msg4", type: "message", text: () => `เธอเก่งขึ้นมาก ๆ เลยนะที่เติบโตมาได้ขนาดนี้<br/>นีโม่ภูมิใจในตัวเธอมาก ๆ เลยนะ` },
+  { id: "question", type: "question", text: () => `แล้วเธอชอบตัวเองตอนไหนมากกว่า?` },
+  { id: "end1", type: "message", text: () => `ตอนนี้เธอกำลังอยู่กับตัวเองวัยเด็กของเธอเองนะ` },
+  { id: "end2", type: "message", text: () => `หลังจากนี้ โปรดใจดีอ่อนโยนกับเด็กคนนี้หน่อยนะ` },
+];
 
-const SelfComparisonScene = ({ userName = "เธอ", childImg, onChoose }: Props) => {
-  const [phase, setPhase] = useState<Phase>("msg1");
+export default function SelfComparisonScene({
+  userName = "เธอ",
+  childImg,
+  onChoose,
+}: Props) {
+  // 2. ใช้ Index ในการควบคุม Phase และใช้ Ref แค่ตัวเดียว
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [picked, setPicked] = useState<Choice | null>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
 
-  const refs = {
-  msg1: useRef<HTMLDivElement>(null),
-  msg2: useRef<HTMLDivElement>(null),
-  msg3: useRef<HTMLDivElement>(null),
-  msg4: useRef<HTMLDivElement>(null),
-  question: useRef<HTMLDivElement>(null),
-} as const;
-
-  /* fade helper */
-  const fadeIn = (el: Element | null) => {
-    if (!el) return;
-    gsap.fromTo(el, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.4, ease: "power2.out" });
+  const calculateReadTime = (text: string) => {
+    const words = text.split(' ').length;
+    return Math.max(3.5, Math.min(words / 2.5, 8));
   };
 
-  /* show each phase */
+  // 3. useEffect หลักสำหรับจัดการ Animation Timeline
   useEffect(() => {
-    fadeIn(refs[phase].current);
+    const currentPhase = scenePhases[phaseIndex];
+    const sceneElement = sceneRef.current;
+    if (!sceneElement) return;
 
-    if (phase === "question") return; // last phase
+    const tl = gsap.timeline();
 
-    const timer = setTimeout(() => {
-      const order: Phase[] = ["msg1", "msg2", "msg3", "msg4", "question"];
-      const idx = order.indexOf(phase);
-      setPhase(order[idx + 1]);
-    }, 5000); // 4s each
+    // Fade In
+    tl.fromTo(
+      sceneElement,
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 1.5, ease: "power3.out" }
+    );
 
-    return () => clearTimeout(timer);
-  }, [phase]);
+    // ถ้าเป็น message ให้เล่นต่อไปอัตโนมัติ
+    if (currentPhase.type.startsWith("message")) {
+      const readTime = calculateReadTime(currentPhase.text(userName));
+      tl.to(sceneElement, {
+        opacity: 0,
+        y: -30,
+        duration: 1.5,
+        ease: "power3.in",
+        delay: readTime,
+      });
+      tl.call(handleAdvance);
+    }
+    
+    // ถ้าเป็น question หรือขั้นตอนสุดท้าย จะรอ user action
+    // (phase สุดท้ายจะรอให้ onChoose ทำงาน)
 
-  /* styles */
-  const pStyle: React.CSSProperties = {
-    fontSize: "clamp(1.3rem,4vw,2.2rem)",
-    color: "#fff",
-    textAlign: "center",
-    textShadow: "2px 2px 6px #000",
-    lineHeight: 1.7,
+    return () => {
+      tl.kill();
+    };
+  }, [phaseIndex]);
+  
+  // 4. สร้างฟังก์ชันสำหรับจัดการการเปลี่ยน Phase
+  const handleAdvance = () => {
+    if (phaseIndex === scenePhases.length - 1) {
+        // เมื่อถึง Phase สุดท้าย ให้เรียก onChoose
+        if (picked && onChoose) {
+            onChoose(picked);
+        }
+    } else {
+      setPhaseIndex(prev => prev + 1);
+    }
   };
-  const btnStyle: React.CSSProperties = {
-    padding: "0.85rem 2.2rem",
-    borderRadius: 40,
-    border: "1px solid rgba(255,255,255,.5)",
-    background: "rgba(255,255,255,.25)",
-    color: "#fff",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
+  
+  const handleChoice = (choice: Choice) => {
+    setPicked(choice);
+    // ทำ animation fade-out แล้วค่อยเปลี่ยน phase
+    gsap.to(sceneRef.current, {
+        opacity: 0,
+        y: -30,
+        duration: 1.0,
+        ease: "power3.in",
+        onComplete: () => {
+          setPhaseIndex(prev => prev + 1); // ไปที่ end1
+        }
+    });
   };
+
+
+  const pStyle: React.CSSProperties = { fontSize: "clamp(1.3rem,4vw,2.2rem)", color: "#fff", textAlign: "center", textShadow: "2px 2px 6px #000", lineHeight: 1.7, marginBottom: "1rem" };
+  const btnStyle: React.CSSProperties = { padding: "0.85rem 2.2rem", borderRadius: 40, border: "1px solid rgba(255,255,255,.5)", background: "rgba(255,255,255,.25)", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" };
+
+  // 5. ทำให้ JSX สะอาดขึ้นโดยการ render จาก Array
+  const currentPhase = scenePhases[phaseIndex];
+
+  const renderContent = () => {
+    switch(currentPhase.type) {
+        case "message":
+            return <p style={pStyle} dangerouslySetInnerHTML={{ __html: currentPhase.text(userName) }} />;
+        
+        case "messageWithImage":
+            return (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.6rem" }}>
+                    <img src={childImg} alt="child" style={{ maxWidth: "55vw", width: 280, borderRadius: 20, boxShadow: "0 6px 20px rgba(0,0,0,.6)" }}/>
+                    <p style={pStyle}>{currentPhase.text(userName)}</p>
+                </div>
+            );
+
+        case "question":
+            return (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+                    <p style={pStyle}>{currentPhase.text(userName)}</p>
+                    <div style={{ display: "flex", gap: "1rem" }}>
+                        <button style={btnStyle} onClick={() => handleChoice("past")}>ชอบตอนเด็ก</button>
+                        <button style={btnStyle} onClick={() => handleChoice("now")}>ชอบตอนนี้</button>
+                    </div>
+                </div>
+            );
+
+        default:
+            return null;
+    }
+  }
 
   return (
     <div
       style={{
-        position: "absolute",
-        inset: 0,
-        background: "#000",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "0 6vw",
-        textAlign: "center",
-        zIndex: 90,
+        position: "absolute", inset: 0, background: "#000", display: "flex",
+        flexDirection: "column", justifyContent: "center", alignItems: "center",
+        padding: "0 6vw", textAlign: "center", zIndex: 90,
       }}
     >
-      {/* msg1 */}
-      {phase === "msg1" && (
-        <div ref={refs.msg1}>
-          <p style={pStyle}>
-            เราเข้าใจความรู้สึกของเธอนะ ไม่ว่าเธอจะเจอเรื่องอะไรมา
-          </p>
+        <div ref={sceneRef} key={phaseIndex} style={{ width: '100%', opacity: 0 }}>
+            {renderContent()}
         </div>
-      )}
-
-      {/* msg2 + image */}
-      {phase === "msg2" && (
-        <div ref={refs.msg2} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.6rem" }}>
-          <img src={childImg} alt="child" style={{ maxWidth: "55vw", width: 280, borderRadius: 20, boxShadow: "0 6px 20px rgba(0,0,0,.6)" }} />
-          <p style={pStyle}>แต่รู้มั้ย ถ้าเทียบกับเมื่อก่อน…</p>
-        </div>
-      )}
-
-      {/* msg3 */}
-      {phase === "msg3" && (
-        <div ref={refs.msg3}>
-          <p style={pStyle}>ตอนเธอยังเด็ก อายุน้อยกว่านี้…</p>
-        </div>
-      )}
-
-      {/* msg4 */}
-      {phase === "msg4" && (
-        <div ref={refs.msg4}>
-          <p style={pStyle}>
-            เธอเก่งขึ้นมาก ๆ เลยนะที่เติบโตมาได้ขนาดนี้<br />นีโม่ภูมิใจในตัวเธอมาก ๆ เลยนะ
-          </p>
-        </div>
-      )}
-
-      {/* question */}
-      {phase === "question" && (
-        <div ref={refs.question} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
-          <p style={pStyle}>แล้วเธอชอบตัวเองตอนไหนมากกว่า?</p>
-
-          <button style={btnStyle} onClick={() => onChoose?.("past")}>ตอนเด็ก</button>
-          <button style={btnStyle} onClick={() => onChoose?.("now")}>ตอนนี้</button>
-        </div>
-      )}
     </div>
   );
-};
-
-export default SelfComparisonScene;
+}
