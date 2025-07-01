@@ -46,7 +46,6 @@ export default function SkyMessageScene({ videoSrc, userName, onDone }: Props) {
     () => (
       <VideoBackground
         videoSrc={videoSrc}
-        audioSrc=""
         onVideoReady={() => {}}
       />
     ),

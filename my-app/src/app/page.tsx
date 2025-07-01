@@ -16,6 +16,9 @@ import MysteryTableScene from "@/components/ui/tablescreen";
 import SelfComparisonScene from "@/components/ui/selfscreen";
 import ChildJourneyScene from "@/components/ui/child";
 import NemoMessageScene from "@/components/ui/NemoMessageScene";
+// ★ 1. Import GlobalAudio และ Type ที่สร้างขึ้นใหม่
+import GlobalAudio, { GlobalAudioHandle } from "@/components/ui/GlobalAudio";
+
 
 // ★ Import a function for saving data to Firebase
 import { saveDataToFirebase } from "@/lib/firebase";
@@ -91,6 +94,9 @@ export default function JourneyPage() {
   // ★ Use a single state to collect all data.
   const [allUserData, setAllUserData] = useState<AllUserData>({});
 
+  // ★ 2. สร้าง ref สำหรับควบคุม GlobalAudio
+  const audioRef = useRef<GlobalAudioHandle>(null);
+
   /* share */
   const [isSharing, setIsSharing] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -152,6 +158,9 @@ export default function JourneyPage() {
   }, []);
 
   const handleContactComplete = useCallback((data: ContactData) => {
+    // ★ 3. สั่งให้เล่นเสียงจาก ref เมื่อฟังก์ชันนี้ทำงาน
+    audioRef.current?.play();
+
     setAllUserData(prev => ({ ...prev, contact: data }));
     setScene("introVideo");
   }, []);
@@ -167,7 +176,6 @@ export default function JourneyPage() {
       <VideoBackground
         key="wakeBg"
         videoSrc="/wake.mp4"
-        audioSrc="/wake-sound.mp3"
         onVideoReady={() => {}}
       />
     ),
@@ -229,7 +237,6 @@ export default function JourneyPage() {
           <>
             <VideoBackground
               videoSrc="/garden1.mp4"
-              audioSrc="/rapid-train.mp3"
               onVideoReady={() => {}}
             />
             {allUserData.user && (
@@ -320,7 +327,6 @@ export default function JourneyPage() {
           <>
             <VideoBackground
               videoSrc="/garden1.mp4"
-              audioSrc="/rapid-train.mp3"
               onVideoReady={() => {}}
             />
             {allUserData.user && (
@@ -459,6 +465,9 @@ export default function JourneyPage() {
         overflow: "hidden",
       }}
     >
+      {/* ★ 4. เพิ่ม GlobalAudio ที่นี่พร้อมกับส่ง ref เข้าไป */}
+      <GlobalAudio ref={audioRef} src="/canon.mp3" />
+      
       {renderScene()}
     </div>
   );

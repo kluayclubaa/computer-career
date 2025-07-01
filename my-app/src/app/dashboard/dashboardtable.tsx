@@ -1,91 +1,116 @@
-// src/app/dashboard/DashboardTable.tsx
-"use client"; // ★★★ คำสั่งสำคัญ: บอกว่านี่คือ Client Component ★★★
+// app/dashboard/DashboardTable.tsx
+"use client";
 
-import React from 'react';
-import { JourneyData } from '@/lib/firebase'; // Import Type ที่สร้างไว้ใน firebase.ts
+import { useEffect, useState } from "react";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  DocumentData,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-// --- Props ที่ Component นี้จะได้รับ ---
-type DashboardTableProps = {
-  journeys: JourneyData[];
+// ---------- types ----------
+export type JourneyRow = DocumentData & {
+  id: string;
+  createdAt: string;           // แปลงเป็น string เพื่อแสดงง่าย
 };
 
-// --- Styles (ยกมาจาก page.tsx) ---
-const tableStyle: React.CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  marginTop: '2rem',
-  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-  backgroundColor: 'white',
-};
-const thStyle: React.CSSProperties = {
-  backgroundColor: '#00796b',
-  color: 'white',
-  padding: '12px 15px',
-  textAlign: 'left',
-  borderBottom: '2px solid #004d40',
-};
-const tdStyle: React.CSSProperties = {
-  padding: '12px 15px',
-  borderBottom: '1px solid #ddd',
-};
+// ---------- UI ----------
+export default function DashboardTable() {
+  const [rows, setRows] = useState<JourneyRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-// --- Helper Component to display sections (ยกมาจาก page.tsx) ---
-const DataSection: React.FC<{ title: string; data?: object }> = ({ title, data }) => {
-    if (!data || Object.keys(data).length === 0) return null;
-    return (
-      <div style={{ marginTop: '10px' }}>
-        <strong>{title}:</strong>
-        <ul style={{ listStyleType: 'none', paddingLeft: '15px' }}>
-          {Object.entries(data).map(([key, value]) => (
-            <li key={key}>- {key}: {String(value)}</li>
-          ))}
-        </ul>
-      </div>
+  useEffect(() => {
+    // query คอลเลกชันเรียงตาม createdAt ย้อนหลัง
+    const q = query(
+      collection(db, "userJourneys"),
+      orderBy("createdAt", "desc"),
     );
-};
 
+    // subscribe real-time
+    const unsub = onSnapshot(q, (snap) => {
+      const list: JourneyRow[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          createdAt: (data.createdAt as Timestamp)
+            .toDate()
+            .toLocaleString("th-TH"),
+        };
+      });
+      setRows(list);
+      setLoading(false);
+    });
 
-// --- Table Component ---
-export default function DashboardTable({ journeys }: DashboardTableProps) {
-  if (journeys.length === 0) {
-    return <p style={{marginTop: '2rem', textAlign: 'center'}}>ยังไม่มีข้อมูลการเดินทาง</p>
-  }
+    return () => unsub();
+  }, []);
+
+  if (loading) return <p>กำลังโหลด...</p>;
+  if (!rows.length) return <p>ยังไม่มีข้อมูลการเดินทาง</p>;
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={tableStyle}>
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse shadow bg-white">
         <thead>
-          <tr>
-            <th style={thStyle}>วันที่สร้าง</th>
-            <th style={thStyle}>ข้อมูลผู้ใช้</th>
-            <th style={{...thStyle, width: '50%'}}>รายละเอียดการเดินทาง</th>
+          <tr className="bg-[#00796b] text-white">
+            <th className="px-4 py-3 text-left">วันที่สร้าง</th>
+            <th className="px-4 py-3 text-left">ข้อมูลผู้ใช้</th>
+            <th className="px-4 py-3 text-left">รายละเอียดการเดินทาง</th>
           </tr>
         </thead>
         <tbody>
-          {journeys.map((journey) => (
-            // โค้ดส่วนนี้จะทำงานได้เพราะอยู่ใน Client Component แล้ว
-            <tr key={journey.id} onMouseOver={e => e.currentTarget.style.backgroundColor='#e0f2f1'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
-              <td style={tdStyle}>{journey.createdAt}</td>
-              <td style={tdStyle}>
-                <strong>ชื่อ:</strong> {journey.user?.name || 'N/A'}<br/>
-                <strong>อายุ:</strong> {journey.user?.age || 'N/A'}<br/><br/>
-                <strong>ต้องการความช่วยเหลือ:</strong> {journey.contact?.helpNeeded || 'N/A'}<br/>
-                <strong>Line ID:</strong> {journey.contact?.lineId || 'N/A'}<br/>
-                <strong>เบอร์โทร:</strong> {journey.contact?.phone || 'N/A'}
+          {rows.map((j) => (
+            <tr
+              key={j.id}
+              className="hover:bg-[#e0f2f1] transition-colors border-b"
+            >
+              <td className="px-4 py-3 whitespace-nowrap">{j.createdAt}</td>
+
+              <td className="px-4 py-3">
+                <strong>ชื่อ:</strong> {j.user?.name || "N/A"} <br />
+                <strong>อายุ:</strong> {j.user?.age || "N/A"} <br />
+                <br />
+                <strong>ต้องการความช่วยเหลือ:</strong>{" "}
+                {j.contact?.helpNeeded || "N/A"} <br />
+                <strong>Line&nbsp;ID:</strong> {j.contact?.lineId || "N/A"}{" "}
+                <br />
+                <strong>เบอร์โทร:</strong> {j.contact?.phone || "N/A"}
               </td>
-              <td style={tdStyle}>
-                <DataSection title="คำถามเริ่มต้น" data={journey.questionOverlay} />
-                <DataSection title="ดอกไม้" data={journey.flower} />
-                <DataSection title="ท้องฟ้า" data={journey.sky} />
-                <DataSection title="โต๊ะปริศนา" data={journey.table} />
-                <DataSection title="ตัวตน" data={journey.self} />
-                <DataSection title="การเดินทางในวัยเด็ก" data={journey.childJourney} />
-                <DataSection title="ข้อความจากนีโม่" data={journey.nemo} />
+
+              <td className="px-4 py-3 space-y-2">
+                {renderSection("คำถามเริ่มต้น", j.questionOverlay)}
+                {renderSection("ดอกไม้", j.flower)}
+                {renderSection("ท้องฟ้า", j.sky)}
+                {renderSection("โต๊ะปริศนา", j.table)}
+                {renderSection("ตัวตน", j.self)}
+                {renderSection("การเดินทางในวัยเด็ก", j.childJourney)}
+                {renderSection("ข้อความจากนีโม่", j.nemo)}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ---------- helper ----------
+function renderSection(label: string, data?: Record<string, unknown>) {
+  if (!data || Object.keys(data).length === 0) return null;
+  return (
+    <details className="rounded border p-2">
+      <summary className="cursor-pointer font-semibold">{label}</summary>
+      <ul className="ml-4 list-disc">
+        {Object.entries(data).map(([k, v]) => (
+          <li key={k}>
+            {k}: {String(v)}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

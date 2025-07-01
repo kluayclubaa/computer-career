@@ -78,7 +78,7 @@ const FlowerScene = ({ userName, onComplete }: FlowerSceneProps) => {
   /* ---------- memo video background so it never re‑mounts ---------- */
   const gardenVideo = useMemo(
     () => (
-      <VideoBackground key="flowerBg" videoSrc="/garden1.mp4" audioSrc="" onVideoReady={() => {}} />
+      <VideoBackground key="flowerBg" videoSrc="/garden1.mp4"  onVideoReady={() => {}} />
     ),
     []
   );

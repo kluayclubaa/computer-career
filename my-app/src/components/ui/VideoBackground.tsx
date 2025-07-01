@@ -1,60 +1,52 @@
-// src/components/VideoBackground.tsx
 "use client";
 
-import React, { useEffect, useRef } from 'react';
-import gsap from 'gsap';
+import React, { useEffect, useRef } from "react";
+import gsap from "gsap";
 
-type VideoBackgroundProps = {
+interface VideoBackgroundProps {
+  /** Path or URL of the video file */
   videoSrc: string;
-  audioSrc: string;
-  onVideoReady: () => void;
-};
+  /** Optional callback when the video can play through (e.g., to hide a loader) */
+  onVideoReady?: () => void;
+  /** Extra Tailwind / utility classes for the wrapper */
+  className?: string;
+}
 
-const VideoBackground = ({ videoSrc, audioSrc, onVideoReady }: VideoBackgroundProps) => {
-  const videoRef = useRef<HTMLVideoElement>(null); // ระบุ type ของ ref
-  const audioRef = useRef<HTMLAudioElement>(null); // ระบุ type ของ ref
+/**
+ * Full‑screen background video without audio.
+ * Renders once and fades in on mount.
+ */
+const VideoBackground: React.FC<VideoBackgroundProps> = ({
+  videoSrc,
+  onVideoReady = () => {},
+  className = "",
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current) {
-      // Fade in video
-      gsap.fromTo(
-        videoRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 2, ease: 'power2.inOut' }
-      );
+    const video = videoRef.current;
+    if (!video) return;
 
-      // Inform parent component when video is ready
-      videoRef.current.oncanplaythrough = () => {
-        onVideoReady();
-      };
-    }
+    // Fade‑in animation
+    gsap.fromTo(
+      video,
+      { opacity: 0 },
+      { opacity: 1, duration: 2, ease: "power2.inOut" }
+    );
 
-    if (audioRef.current) {
-      audioRef.current.volume = 0;
-      audioRef.current.play().catch(e => console.error("Audio play failed:", e));
-      gsap.to(audioRef.current, { volume: 0.3, duration: 3, ease: 'power1.in' });
-    }
+    // Notify parent when video is ready
+    const handleReady = () => onVideoReady();
+    video.addEventListener("canplaythrough", handleReady, { once: true });
 
     return () => {
-      // Cleanup on unmount
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
+      video.removeEventListener("canplaythrough", handleReady);
     };
   }, [onVideoReady]);
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      overflow: 'hidden',
-      zIndex: -1,
-      backgroundColor: 'black'
-    }}>
+    <div
+      className={`fixed inset-0 -z-10 overflow-hidden bg-black ${className}`}
+    >
       <video
         ref={videoRef}
         src={videoSrc}
@@ -62,18 +54,8 @@ const VideoBackground = ({ videoSrc, audioSrc, onVideoReady }: VideoBackgroundPr
         loop
         muted
         playsInline
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          opacity: 0
-        }}
+        className="h-full w-full object-cover opacity-0"
       />
-      {audioSrc && (
-        <audio ref={audioRef} src={audioSrc} loop>
-          Your browser does not support the audio element.
-        </audio>
-      )}
     </div>
   );
 };

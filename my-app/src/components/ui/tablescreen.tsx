@@ -104,7 +104,7 @@ export default function MysteryTableScene({ tableImgSrc, userName, happyThing, o
           <div style={{ display: "flex", flexDirection: "column", gap: "1.4rem", alignItems: "center" }}>
             <p style={baseStyles.p}>ระหว่างทางคุณเจอโต๊ะปริศนาที่มีผ้าคลุม</p>
             <img src={tableImgSrc} alt="Mystery Table" onClick={() => handleInteraction()} style={{ maxWidth: "60vw", width: 320, cursor: "pointer", borderRadius: 20, boxShadow: "0 6px 18px rgba(0,0,0,.5)" }} />
-            <span style={{ fontSize: "clamp(1rem,3vw,1.4rem)", opacity: 0.85 }}>แตะเพื่อดูใต้ผ้าคลุม</span>
+            <span style={{ fontSize: "clamp(1rem,3vw,1.4rem)", opacity: 0.85 }}>แตะที่โต๊ะเพื่อดูใต้ผ้าคลุม</span>
           </div>
         );
       case "message":
